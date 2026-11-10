@@ -86,46 +86,48 @@ spawn(const char *cmd)
 	}
 }
 
-/* color of one square pixel, -1 for the terminal's own background */
-static int
+/* How many vertical pixel units one column is worth, so the dial is
+ * a true circle: half-block pixel width over height, measured from
+ * the terminal's reported pixel size. Divided by the config xscale,
+ * so xscale above 1.0 widens the dial. */
+static double hscale = 1.0;
+
+/* Color of one square pixel as 0xRRGGBB, or -1 for the terminal's
+ * own background. Hard-thresholded: a pixel is painted solid when
+ * at least half of it is covered. Chunky on purpose. The wedge
+ * reaches under the ring like the physical disc under its bezel,
+ * and the ring is drawn on top, so they always meet seamlessly. */
+static long
 pixel(double dx, double dy, double R, double frac)
 {
-	double rr, f, d, arc, len;
-	int k;
-
-	rr = sqrt(dx * dx + dy * dy);
-	if (rr <= R)
-		return in_wedge(dx, dy, frac) ? wedgecolor : -1;
-	if (rr <= R + 1.3)
+	if (ring_coverage(dx, dy, R, 2.0) >= 0.5)
 		return rimcolor;
-	/* 5 minute tick marks outside the rim */
-	f = angfrac(dx, dy);
-	d = fabs(f * 12.0 - nearbyint(f * 12.0)) / 12.0;
-	arc = d * 2.0 * M_PI * rr;
-	if (arc <= 1.0) {
-		k = (int)nearbyint(f * 12.0) % 12;
-		len = (k == 0) ? 5.0 : (k % 3 == 0) ? 3.5 : 2.0;
-		if (rr <= R + 1.3 + len)
-			return rimcolor;
-	}
+	if (wedge_coverage(dx, dy, R + 2.0, frac) >= 0.5)
+		return wedgecolor;
 	return -1;
 }
 
 static void
-setcolors(int fg, int bg, int *curfg, int *curbg)
+setcolors(long fg, long bg, long *curfg, long *curbg)
 {
 	if (fg != *curfg) {
 		if (fg < 0)
 			fputs("\033[39m", stdout);
 		else
-			printf("\033[38;5;%dm", fg);
+			printf("\033[38;2;%d;%d;%dm",
+			       (int)(fg >> 16 & 0xff),
+			       (int)(fg >> 8 & 0xff),
+			       (int)(fg & 0xff));
 		*curfg = fg;
 	}
 	if (bg != *curbg) {
 		if (bg < 0)
 			fputs("\033[49m", stdout);
 		else
-			printf("\033[48;5;%dm", bg);
+			printf("\033[48;2;%d;%d;%dm",
+			       (int)(bg >> 16 & 0xff),
+			       (int)(bg >> 8 & 0xff),
+			       (int)(bg & 0xff));
 		*curbg = bg;
 	}
 }
@@ -133,20 +135,22 @@ setcolors(int fg, int bg, int *curfg, int *curbg)
 static void
 draw(int cols, int rows, double frac, int remsec, const Input *in)
 {
-	int x, y, ct, cb, curfg = -2, curbg = -2, col;
-	int pw = cols, ph = (rows - 1) * 2;
+	int x, y, col;
+	long ct, cb, curfg = -2, curbg = -2;
+	int drows = rows >= 10 ? rows - 2 : rows - 1; /* breathing row */
+	int pw = cols, ph = drows * 2;
 	double cx = pw / 2.0 - 0.5, cy = ph / 2.0 - 0.5, R;
 	char text[16];
 
-	R = fmin((pw / 2.0 - 1.0) / xscale, ph / 2.0 - 1.0) - 7.0;
+	R = fmin((pw / 2.0 - 1.0) * hscale, ph / 2.0 - 1.0) - 3.5;
 	if (R < 3.0)
-		R = fmin((pw / 2.0 - 1.0) / xscale, ph / 2.0 - 1.0);
+		R = fmin((pw / 2.0 - 1.0) * hscale, ph / 2.0 - 1.0);
 
-	for (y = 0; y < rows - 1; y++) {
+	for (y = 0; y < drows; y++) {
 		printf("\033[%d;1H", y + 1);
 		for (x = 0; x < cols; x++) {
-			ct = pixel((x - cx) / xscale, 2 * y - cy, R, frac);
-			cb = pixel((x - cx) / xscale, 2 * y + 1 - cy, R, frac);
+			ct = pixel((x - cx) * hscale, 2 * y - cy, R, frac);
+			cb = pixel((x - cx) * hscale, 2 * y + 1 - cy, R, frac);
 			if (ct < 0 && cb < 0) {
 				setcolors(curfg, -1, &curfg, &curbg);
 				putchar(' ');
@@ -162,6 +166,8 @@ draw(int cols, int rows, double frac, int remsec, const Input *in)
 			}
 		}
 	}
+	for (y = drows; y < rows - 1; y++)
+		printf("\033[%d;1H\033[K", y + 1);
 	if (in->len)
 		snprintf(text, sizeof text, "set: %.*s", in->len, in->buf);
 	else
@@ -198,6 +204,7 @@ main(int argc, char *argv[])
 	sigaction(SIGWINCH, &sa, NULL);
 	sigaction(SIGINT, &sa, NULL);
 	sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGHUP, &sa, NULL);
 	sa.sa_handler = SIG_IGN;
 	sigaction(SIGCHLD, &sa, NULL); /* auto reap alarm commands */
 
@@ -217,6 +224,16 @@ main(int argc, char *argv[])
 			    ws.ws_col > 0 && ws.ws_row > 1) {
 				cols = ws.ws_col;
 				rows = ws.ws_row;
+				hscale = 1.0 / xscale;
+				if (ws.ws_xpixel > 0 && ws.ws_ypixel > 0)
+					hscale = 2.0 *
+					         ((double)ws.ws_xpixel / cols) /
+					         ((double)ws.ws_ypixel / rows) /
+					         xscale;
+				if (hscale < 0.25)
+					hscale = 0.25;
+				if (hscale > 4.0)
+					hscale = 4.0;
 			}
 			forcedraw = 1;
 		}
@@ -244,14 +261,19 @@ main(int argc, char *argv[])
 		FD_SET(STDIN_FILENO, &rfds);
 		tv.tv_sec = 0;
 		tv.tv_usec = 100000;
-		if (select(STDIN_FILENO + 1, &rfds, NULL, NULL, &tv) > 0 &&
-		    read(STDIN_FILENO, &c, 1) == 1) {
-			if (c == 'q' || c == 3)
+		if (select(STDIN_FILENO + 1, &rfds, NULL, NULL, &tv) > 0) {
+			ssize_t n = read(STDIN_FILENO, &c, 1);
+
+			if (n == 0) /* terminal closed */
 				break;
-			if ((m = input_feed(&in, c, now())) > 0) {
-				deadline = now() + m * 60;
-				alarmed = 0;
-				forcedraw = 1;
+			if (n == 1) {
+				if (c == 'q' || c == 3)
+					break;
+				if ((m = input_feed(&in, c, now())) > 0) {
+					deadline = now() + m * 60;
+					alarmed = 0;
+					forcedraw = 1;
+				}
 			}
 		}
 	}

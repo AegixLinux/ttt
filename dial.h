@@ -34,4 +34,45 @@ in_wedge(double dx, double dy, double frac)
 	return angfrac(dx, dy) <= frac;
 }
 
+/* Fraction (0 to 1) of the unit pixel centered at (dx, dy) that is
+ * covered by the wedge of radius R, by supersampling. Lets edge
+ * pixels render on a color ramp instead of a hard staircase. */
+static double
+wedge_coverage(double dx, double dy, double R, double frac)
+{
+	int i, j, hit = 0;
+	double sx, sy;
+
+	for (i = 0; i < 4; i++) {
+		for (j = 0; j < 4; j++) {
+			sx = dx + (i + 0.5) / 4.0 - 0.5;
+			sy = dy + (j + 0.5) / 4.0 - 0.5;
+			if (sx * sx + sy * sy <= R * R &&
+			    in_wedge(sx, sy, frac))
+				hit++;
+		}
+	}
+	return hit / 16.0;
+}
+
+/* Fraction of the unit pixel at (dx, dy) covered by the ring band
+ * between radius R and R + w. */
+static double
+ring_coverage(double dx, double dy, double R, double w)
+{
+	int i, j, hit = 0;
+	double sx, sy, r2;
+
+	for (i = 0; i < 4; i++) {
+		for (j = 0; j < 4; j++) {
+			sx = dx + (i + 0.5) / 4.0 - 0.5;
+			sy = dy + (j + 0.5) / 4.0 - 0.5;
+			r2 = sx * sx + sy * sy;
+			if (r2 > R * R && r2 <= (R + w) * (R + w))
+				hit++;
+		}
+	}
+	return hit / 16.0;
+}
+
 #endif

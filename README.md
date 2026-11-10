@@ -6,6 +6,10 @@ clock face (15 east, 30 south, 45 west), and a red wedge whose edge
 sweeps counterclockwise back to noon as time runs out. Built for
 ADHD time blindness: you see time leaving, you do not read a number.
 
+The dial is deliberate chunky pixel art in the Aegix st gruvbox
+colors, rendered with half blocks and corrected to a true circle
+using the cell size your terminal reports.
+
 Part of the Aegix Linux suckless-style tool set.
 
 ## Usage
@@ -22,7 +26,8 @@ While it runs:
 
 At zero the whole screen flashes red (`ttt-flash`) and the
 freedesktop alarm sound plays. Both are configurable in `config.h`
-(`alarmcmd`), as are the colors.
+(`alarmcmd`), as are the colors and the dial's aspect trim
+(`xscale`, for terminals that do not report their pixel size).
 
 ## The floating popup
 

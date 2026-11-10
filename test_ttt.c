@@ -43,6 +43,37 @@ test_in_wedge(void)
 }
 
 static void
+test_wedge_coverage(void)
+{
+	/* deep inside the wedge: full coverage */
+	OK(NEAR(wedge_coverage(5.0, 0.0, 20.0, 0.5), 1.0));
+	/* far outside the dial radius: none */
+	OK(wedge_coverage(30.0, 0.0, 20.0, 0.5) == 0.0);
+	/* on the wrong side of the dial: none */
+	OK(wedge_coverage(-10.0, 0.0, 20.0, 0.5) == 0.0);
+	/* straddling the circle edge: partial */
+	OK(wedge_coverage(20.0, 0.0, 20.0, 0.5) > 0.05);
+	OK(wedge_coverage(20.0, 0.0, 20.0, 0.5) < 0.95);
+	/* straddling the straight noon edge: partial */
+	OK(wedge_coverage(0.0, -10.0, 20.0, 0.25) > 0.05);
+	OK(wedge_coverage(0.0, -10.0, 20.0, 0.25) < 0.95);
+}
+
+static void
+test_ring_coverage(void)
+{
+	/* centered in a 2 wide band just outside R 20: full */
+	OK(NEAR(ring_coverage(21.0, 0.0, 20.0, 2.0), 1.0));
+	/* well inside the dial: none */
+	OK(ring_coverage(5.0, 0.0, 20.0, 2.0) == 0.0);
+	/* well outside the band: none */
+	OK(ring_coverage(30.0, 0.0, 20.0, 2.0) == 0.0);
+	/* straddling the inner edge: partial */
+	OK(ring_coverage(20.0, 0.0, 20.0, 2.0) > 0.05);
+	OK(ring_coverage(20.0, 0.0, 20.0, 2.0) < 0.95);
+}
+
+static void
 test_input_two_digits_commit(void)
 {
 	Input in;
@@ -108,6 +139,8 @@ main(void)
 {
 	test_angfrac();
 	test_in_wedge();
+	test_wedge_coverage();
+	test_ring_coverage();
 	test_input_two_digits_commit();
 	test_input_enter_commits_single_digit();
 	test_input_newline_commits_too();
