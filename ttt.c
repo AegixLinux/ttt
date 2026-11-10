@@ -1,8 +1,9 @@
 /* ttt - terminal time timer
  *
  * A visual countdown in the spirit of the physical Time Timer:
- * a dial with 0 at the top, a full hour around the circle, and a
- * red wedge that shrinks counterclockwise as time runs out.
+ * a dial with 0 at the top, minutes running clockwise like a clock
+ * face (15 east, 30 south, 45 west), and a red wedge whose edge
+ * sweeps counterclockwise back to noon as time runs out.
  *
  * usage: ttt [minutes]
  * keys:  1-60 then Enter (or a short pause) sets the timer,

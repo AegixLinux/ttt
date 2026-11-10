@@ -19,21 +19,21 @@ static int fails;
 static void
 test_angfrac(void)
 {
-	OK(NEAR(angfrac(0.0, -1.0), 0.0));   /* top, 12 o'clock */
-	OK(NEAR(angfrac(-1.0, 0.0), 0.25));  /* left, 15 min mark */
-	OK(NEAR(angfrac(0.0, 1.0), 0.5));    /* bottom, 30 min mark */
-	OK(NEAR(angfrac(1.0, 0.0), 0.75));   /* right, 45 min mark */
+	OK(NEAR(angfrac(0.0, -1.0), 0.0));   /* top, 0 at noon */
+	OK(NEAR(angfrac(1.0, 0.0), 0.25));   /* east, 15 min mark */
+	OK(NEAR(angfrac(0.0, 1.0), 0.5));    /* south, 30 min mark */
+	OK(NEAR(angfrac(-1.0, 0.0), 0.75));  /* west, 45 min mark */
 }
 
 static void
 test_in_wedge(void)
 {
-	/* 30 minutes remaining: left half is red, right half is not */
-	OK(in_wedge(-1.0, 0.0, 0.5) == 1);
-	OK(in_wedge(1.0, 0.0, 0.5) == 0);
-	/* just past the top, counterclockwise side, always in while running */
-	OK(in_wedge(-0.05, -1.0, 0.1) == 1);
-	/* clockwise of the wedge edge at 10 min remaining */
+	/* 30 minutes remaining: right half is red, left half is not */
+	OK(in_wedge(1.0, 0.0, 0.5) == 1);
+	OK(in_wedge(-1.0, 0.0, 0.5) == 0);
+	/* just past the top on the east side, always in while running */
+	OK(in_wedge(0.05, -1.0, 0.1) == 1);
+	/* past the wedge edge at 10 min remaining */
 	OK(in_wedge(0.0, 1.0, 1.0 / 6.0) == 0);
 	/* timer at zero: nothing is red, not even the top line */
 	OK(in_wedge(0.0, -1.0, 0.0) == 0);

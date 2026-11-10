@@ -1,8 +1,9 @@
 # ttt - terminal time timer
 
 A visual countdown for the terminal in the spirit of the physical
-Time Timer dials: 0 at the top, a full hour around the circle, and a
-red wedge that shrinks counterclockwise as time runs out. Built for
+Time Timer dials: 0 at the top, minutes running clockwise like a
+clock face (15 east, 30 south, 45 west), and a red wedge whose edge
+sweeps counterclockwise back to noon as time runs out. Built for
 ADHD time blindness: you see time leaving, you do not read a number.
 
 Part of the Aegix Linux suckless-style tool set.

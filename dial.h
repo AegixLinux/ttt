@@ -8,13 +8,14 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-/* Fraction of a full turn, counterclockwise from 12 o'clock, in [0, 1).
+/* Fraction of a full turn, clockwise from 12 o'clock, in [0, 1).
  * (dx, dy) is a point relative to the dial center, screen y grows down.
- * Matches the physical Time Timer: the wedge extends counterclockwise. */
+ * Minutes read like a clock face: 15 east, 30 south, 45 west, so the
+ * wedge edge sweeps counterclockwise back to noon as time runs out. */
 static double
 angfrac(double dx, double dy)
 {
-	double a = atan2(-dx, -dy);
+	double a = atan2(dx, -dy);
 
 	if (a < 0)
 		a += 2 * M_PI;
